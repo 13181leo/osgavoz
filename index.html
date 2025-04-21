@@ -6,109 +6,247 @@
   <title>Osga Voz</title>
   <style>
     body {
-      font-family: Arial, sans-serif;
-      background: #111;
-      color: #eee;
       margin: 0;
       padding: 0;
+      background: url('https://img.freepik.com/fotos-gratis/fundo-futurista-com-luzes-de-neon-abstratas-brilhantes-coloridas_181624-26329.jpg') no-repeat center center fixed;
+      background-size: cover;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
     }
-    .container {
-      max-width: 480px;
-      margin: 0 auto;
-      padding: 20px;
-    }
-    h1 {
-      text-align: center;
-      font-size: 2em;
-      color: #00ff99;
-    }
-    button {
+    #tabs {
+      position: fixed;
+      top: 0;
       width: 100%;
-      padding: 12px;
-      font-size: 16px;
+      display: flex;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 10;
+    }
+    #tabs button {
+      flex: 1;
+      padding: 15px;
+      font-weight: bold;
+      color: white;
+      background: none;
       border: none;
-      border-radius: 8px;
-      margin: 10px 0;
-      background: #00ff99;
-      color: #000;
       cursor: pointer;
     }
-    button:hover {
-      background: #00cc77;
+    .container {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+      max-width: 400px;
+      padding: 20px;
+      margin-top: 80px;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 20px;
+      backdrop-filter: blur(5px);
     }
-    .info {
-      text-align: center;
-      margin-top: 20px;
-      font-size: 0.9em;
-      color: #ccc;
+    .botao {
+      width: 140px;
+      height: 140px;
+      margin: 12px;
+      font-size: 20px;
+      font-weight: bold;
+      border-radius: 50%;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .on { background-color: #1e7e34; }
+    .off { background-color: #a71d2a; }
+    .ativo.on {
+      background: #4caf50;
+      box-shadow: 0 0 25px #4caf50;
+    }
+    .ativo.off {
+      background: #f44336;
+      box-shadow: 0 0 25px #f44336;
+    }
+    #loginArea {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 90%;
+      max-width: 400px;
+      margin-top: 80px;
+      padding: 20px;
+      border-radius: 20px;
+      background: rgba(255, 255, 255, 0.05);
+      backdrop-filter: blur(5px);
+    }
+    #loginArea input, #loginArea button {
+      width: 100%;
+      font-size: 16px;
+      margin: 8px 0;
+      padding: 12px;
+      border-radius: 10px;
+      border: none;
+    }
+    #loginArea button {
+      background-color: #2196F3;
+      color: white;
     }
   </style>
-
-  <!-- 🔐 Redirecionamento para HTTPS -->
-  <script>
-    if (location.protocol !== 'https:') {
-      location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
-    }
-  </script>
 </head>
 <body>
-  <div class="container">
-    <h1>Controle de Voz</h1>
 
-    <button onclick="iniciarComandos()">Aplicar Comandos</button>
+<div id="tabs">
+  <button onclick="abrirPainel()">Painel</button>
+  <button onclick="abrirConfig()">Configurações</button>
+</div>
 
-    <div class="info">
-      🎤 Toque em "Aplicar Comandos" e permita o uso do microfone.<br>
-      Diga comandos como "ligar", "desligar", "abrir", "fechar"...
-    </div>
-  </div>
+<div id="loginArea">
+  <h1>Login</h1>
+  <input type="text" id="usuario" placeholder="Usuário">
+  <input type="password" id="senha" placeholder="Senha">
+  <button onclick="fazerLogin()">Entrar</button>
+</div>
 
-  <script>
-    let reconhecimento;
+<div id="painel" class="container">
+  <h2>Controle do Relé</h2>
+  <button id="btnLigar" class="botao on" onclick="enviarComando(0)">LIGAR</button>
+  <button id="btnDesligar" class="botao off" onclick="enviarComando(1)">DESLIGAR</button>
+  <div id="estadoRele">⏳ Verificando...</div>
+</div>
 
-    function iniciarComandos() {
-      if (!('webkitSpeechRecognition' in window)) {
-        alert("Reconhecimento de voz não é compatível com este navegador.");
-        return;
-      }
+<div id="configPage" class="container">
+  <h2>Comandos de Voz</h2>
+  <label for="comandoLigar">Comando para Ligar:</label>
+  <input type="text" id="comandoLigar" value="ligar">
+  <label for="comandoDesligar">Comando para Desligar:</label>
+  <input type="text" id="comandoDesligar" value="desligar">
+  <button onclick="iniciarReconhecimento()">Aplicar Comandos</button>
+  <p>🎤 Diga "ligar" ou "desligar" para controlar.</p>
+</div>
 
-      reconhecimento = new webkitSpeechRecognition();
-      reconhecimento.lang = "pt-BR";
-      reconhecimento.continuous = true;
-      reconhecimento.interimResults = false;
+<script>
+  const ipServidor = '45.181.56.47';
+  const porta = '8080';
+  let token = '';
+  let ultimoEstado = null;
+  let reconhecimento = null;
 
-      reconhecimento.onresult = (event) => {
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            const comando = event.results[i][0].transcript.trim().toLowerCase();
-            console.log("Comando reconhecido:", comando);
-            processarComando(comando);
+  const usuarios = {
+    "cliente21@osga.com": {
+      senha: "13181leo",
+      token: "lFB0OVz9myOpC5kTOw4nDcnxdjdx-TCY"
+    }
+  };
+
+  function fazerLogin() {
+    const user = document.getElementById('usuario').value;
+    const senha = document.getElementById('senha').value;
+    if (usuarios[user] && usuarios[user].senha === senha) {
+      token = usuarios[user].token;
+      document.getElementById('loginArea').style.display = 'none';
+      abrirPainel();
+      atualizarEstado();
+      setInterval(atualizarEstado, 3000);
+    } else {
+      alert("Usuário ou senha inválido.");
+    }
+  }
+
+  function abrirPainel() {
+    document.getElementById('painel').style.display = 'flex';
+    document.getElementById('configPage').style.display = 'none';
+  }
+
+  function abrirConfig() {
+    document.getElementById('painel').style.display = 'none';
+    document.getElementById('configPage').style.display = 'flex';
+    iniciarReconhecimento();
+  }
+
+  function enviarComando(valor) {
+    fetch(`http://${ipServidor}:${porta}/${token}/update/V5?value=${valor}`)
+      .then(response => {
+        if (response.ok) {
+          atualizarVisual(String(valor));
+          ultimoEstado = String(valor);
+        } else {
+          document.getElementById('estadoRele').innerText = '❌ Erro ao enviar comando';
+        }
+      })
+      .catch(() => {
+        document.getElementById('estadoRele').innerText = '❌ Erro de conexão';
+      });
+  }
+
+  function atualizarEstado() {
+    fetch(`http://${ipServidor}:${porta}/${token}/get/V5`)
+      .then(res => res.json())
+      .then(data => {
+        let valor = Array.isArray(data) ? String(data[0]) : String(data.value);
+        valor = valor.trim();
+        if (valor === "0" || valor === "1") {
+          if (valor !== ultimoEstado) {
+            ultimoEstado = valor;
+            atualizarVisual(valor);
           }
         }
-      };
+      });
+  }
 
-      reconhecimento.onerror = (event) => {
-        console.warn("Erro no reconhecimento:", event.error);
-        if (event.error === "not-allowed" || event.error === "permission-denied") {
-          alert("Permissão de microfone negada. Vá nas configurações do navegador e ative.");
-        }
-      };
+  function atualizarVisual(valor) {
+    const status = document.getElementById('estadoRele');
+    const btnLigar = document.getElementById('btnLigar');
+    const btnDesligar = document.getElementById('btnDesligar');
+    btnLigar.classList.remove('ativo');
+    btnDesligar.classList.remove('ativo');
+    if (valor === "0") {
+      status.innerHTML = '✅ <span style="color: #4caf50;">Ligado</span>';
+      btnLigar.classList.add('ativo');
+    } else {
+      status.innerHTML = '❌ <span style="color: #f44336;">Desligado</span>';
+      btnDesligar.classList.add('ativo');
+    }
+  }
 
-      reconhecimento.start();
-      console.log("Reconhecimento de voz iniciado.");
+  function iniciarReconhecimento() {
+    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
+      alert("Reconhecimento de voz não é suportado.");
+      return;
     }
 
-    function processarComando(comando) {
-      // Aqui você pode integrar com o ESP ou lógica que desejar
-      if (comando.includes("ligar") || comando.includes("abrir")) {
-        alert("Comando: Ligar / Abrir reconhecido!");
-        // Envie comando para ESP, exemplo via fetch ou WebSocket
-      } else if (comando.includes("desligar") || comando.includes("fechar")) {
-        alert("Comando: Desligar / Fechar reconhecido!");
-      } else {
-        alert("Comando não reconhecido: " + comando);
+    if (reconhecimento) {
+      reconhecimento.stop();
+      reconhecimento = null;
+    }
+
+    reconhecimento = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+    reconhecimento.lang = 'pt-BR';
+    reconhecimento.continuous = true;
+    reconhecimento.interimResults = false;
+
+    reconhecimento.onresult = (event) => {
+      const comando = event.results[event.results.length - 1][0].transcript.toLowerCase();
+      const palavraLigar = document.getElementById("comandoLigar").value.toLowerCase();
+      const palavraDesligar = document.getElementById("comandoDesligar").value.toLowerCase();
+
+      if (comando.includes(palavraLigar) && ultimoEstado !== "0") {
+        enviarComando(0);
+      } else if (comando.includes(palavraDesligar) && ultimoEstado !== "1") {
+        enviarComando(1);
       }
-    }
-  </script>
+    };
+
+    reconhecimento.onerror = (event) => {
+      console.warn("Erro no reconhecimento:", event.error);
+    };
+
+    reconhecimento.onend = () => {
+      setTimeout(() => reconhecimento.start(), 1000);
+    };
+
+    reconhecimento.start();
+  }
+</script>
 </body>
 </html>
