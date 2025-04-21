@@ -1,335 +1,114 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Controle de Relé</title>
-  <script src="https://cdn.jsdelivr.net/npm/emailjs-com@3/dist/email.min.js"></script>
-  <script>
-    (function(){
-      emailjs.init("FnhYPlb-lHM3L32qG");
-    })();
-  </script>
+  <title>Osga Voz</title>
   <style>
-    /* ... [seus estilos permanecem iguais] ... */
     body {
+      font-family: Arial, sans-serif;
+      background: #111;
+      color: #eee;
       margin: 0;
       padding: 0;
-      background: url('https://img.freepik.com/fotos-gratis/fundo-futurista-com-luzes-de-neon-abstratas-brilhantes-coloridas_181624-26329.jpg') no-repeat center center fixed;
-      background-size: cover;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-    }
-    #tabs {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 10;
-    }
-    #tabs button {
-      flex: 1;
-      padding: 15px;
-      font-weight: bold;
-      color: white;
-      background: none;
-      border: none;
-      cursor: pointer;
-      transition: background 0.3s ease;
-    }
-    #tabs button:hover {
-      background-color: rgba(255,255,255,0.1);
     }
     .container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 100%;
-      max-width: 400px;
+      max-width: 480px;
+      margin: 0 auto;
       padding: 20px;
-      box-sizing: border-box;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
-      backdrop-filter: blur(5px);
-      margin-top: 80px;
     }
-    .botao {
-      width: 140px;
-      height: 140px;
-      margin: 12px;
-      font-size: 20px;
-      font-weight: bold;
-      border-radius: 50%;
-      border: none;
-      background: linear-gradient(145deg, #1f1f1f, #0a0a0a);
-      color: white;
-      cursor: pointer;
-      transition: all 0.3s ease;
-      box-shadow: 0 0 20px rgba(0, 255, 255, 0.3);
+    h1 {
+      text-align: center;
+      font-size: 2em;
+      color: #00ff99;
     }
-    .botao.on { background-color: #1e7e34; }
-    .botao.off { background-color: #a71d2a; }
-    .botao.ativo.on {
-      background: #4caf50;
-      box-shadow: 0 0 25px #4caf50, inset 0 0 10px #81c784;
-    }
-    .botao.ativo.off {
-      background: #f44336;
-      box-shadow: 0 0 25px #f44336, inset 0 0 10px #e57373;
-    }
-    .status { margin-top: 20px; font-size: 18px; opacity: 0.9; }
-    .indicador { font-size: 24px; margin-top: 5px; }
-    .ligado { color: #4CAF50; }
-    .desligado { color: #f44336; }
-    #loginArea {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 90%;
-      max-width: 400px;
-      background: rgba(255, 255, 255, 0.03);
-      padding: 20px;
-      border-radius: 20px;
-      backdrop-filter: blur(4px);
-      margin-top: 80px;
-    }
-    #loginArea input, #loginArea button {
+    button {
       width: 100%;
-      font-size: 16px;
-      margin: 8px 0;
       padding: 12px;
-      border-radius: 10px;
-      border: none;
-      box-sizing: border-box;
-    }
-    #loginArea button {
-      background-color: #2196F3;
-      color: white;
-    }
-    #loginArea button:hover {
-      background-color: #1976D2;
-    }
-    #atualizacao {
-      margin-top: 10px;
       font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      margin: 10px 0;
+      background: #00ff99;
+      color: #000;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #00cc77;
+    }
+    .info {
+      text-align: center;
+      margin-top: 20px;
+      font-size: 0.9em;
       color: #ccc;
     }
-    label {
-      margin-top: 10px;
-      align-self: flex-start;
-    }
   </style>
+
+  <!-- 🔐 Redirecionamento para HTTPS -->
+  <script>
+    if (location.protocol !== 'https:') {
+      location.href = 'https:' + window.location.href.substring(window.location.protocol.length);
+    }
+  </script>
 </head>
 <body>
+  <div class="container">
+    <h1>Controle de Voz</h1>
 
-<div id="tabs">
-  <button onclick="abrirPainel()">Painel</button>
-  <button onclick="abrirConfig()">Configurações</button>
-</div>
+    <button onclick="iniciarComandos()">Aplicar Comandos</button>
 
-<div id="loginArea">
-  <h1>Login</h1>
-  <input type="text" id="usuario" placeholder="Usuário" />
-  <input type="password" id="senha" placeholder="Senha" />
-  <button onclick="fazerLogin()">Entrar</button>
-</div>
-
-<div id="painel" style="display: none;" class="container">
-  <h1>Controle do Relé (V5)</h1>
-  <div style="display: flex; flex-wrap: wrap; justify-content: center;">
-    <button id="btnLigar" class="botao on" onclick="enviarComando(0)">LIGAR</button>
-    <button id="btnDesligar" class="botao off" onclick="enviarComando(1)">DESLIGAR</button>
+    <div class="info">
+      🎤 Toque em "Aplicar Comandos" e permita o uso do microfone.<br>
+      Diga comandos como "ligar", "desligar", "abrir", "fechar"...
+    </div>
   </div>
-  <div class="status">Estado atual:</div>
-  <div class="indicador" id="estadoRele">⏳ Verificando...</div>
-  <div id="atualizacao">Última mudança: --</div>
-</div>
 
-<div id="configPage" style="display: none;" class="container">
-  <h1>Configurações</h1>
-  <p>Configure abaixo os comandos de voz:</p>
+  <script>
+    let reconhecimento;
 
-  <label for="comandoLigar">Comando para Ligar:</label>
-  <input type="text" id="comandoLigar" value="abrir" />
-
-  <label for="comandoDesligar">Comando para Desligar:</label>
-  <input type="text" id="comandoDesligar" value="fechar" />
-
-  <button onclick="iniciarReconhecimento()">Aplicar Comandos</button>
-
-  <p style="margin-top: 20px;">O assistente de voz está escutando os comandos personalizados.</p>
-</div>
-
-<script>
-  const ipServidor = '45.181.56.47';
-  const porta = '8080';
-
-  let token = '';
-  let emailUsuario = '';
-  let ultimoEstado = null;
-  let reconhecimento = null;
-
-  const usuarios = {
-    "cliente21@osga.com": {
-      senha: "13181leo",
-      token: "lFB0OVz9myOpC5kTOw4nDcnxdjdx-TCY",
-      email: "email1@example.com"
-    }
-  };
-
-  function fazerLogin() {
-    const user = document.getElementById('usuario').value;
-    const senha = document.getElementById('senha').value;
-
-    if (usuarios[user] && usuarios[user].senha === senha) {
-      token = usuarios[user].token;
-      emailUsuario = usuarios[user].email;
-      document.getElementById('loginArea').style.display = 'none';
-      abrirPainel();
-      atualizarEstado();
-      setInterval(atualizarEstado, 3000);
-    } else {
-      alert("Usuário ou senha inválido.");
-    }
-  }
-
-  function abrirPainel() {
-    document.getElementById('painel').style.display = 'flex';
-    document.getElementById('configPage').style.display = 'none';
-  }
-
-  function abrirConfig() {
-    document.getElementById('painel').style.display = 'none';
-    document.getElementById('configPage').style.display = 'flex';
-    iniciarReconhecimento();
-  }
-
-  function enviarComando(valor) {
-    const url = `http://${ipServidor}:${porta}/${token}/update/V5?value=${valor}`;
-    fetch(url)
-      .then(response => {
-        if (response.ok) {
-          atualizarVisual(String(valor));
-          registrarHorario(String(valor));
-          enviarEmail(String(valor));
-          ultimoEstado = String(valor);
-          document.getElementById('estadoRele').innerText = valor === "0" ? '✅ Ligado' : '❌ Desligado';
-        } else {
-          document.getElementById('estadoRele').innerText = '❌ Erro ao enviar comando';
-        }
-      })
-      .catch(() => {
-        document.getElementById('estadoRele').innerText = '❌ Erro de conexão';
-      });
-  }
-
-  function atualizarEstado() {
-    const url = `http://${ipServidor}:${porta}/${token}/get/V5`;
-    fetch(url)
-      .then(response => response.json())
-      .then(data => {
-        let valor = Array.isArray(data) ? String(data[0]) : String(data.value);
-        valor = valor.trim();
-
-        if (valor !== "0" && valor !== "1") {
-          aplicarUltimoEstado();
-          return;
-        }
-
-        if (valor !== ultimoEstado) {
-          registrarHorario(valor);
-          enviarEmail(valor);
-        }
-
-        ultimoEstado = valor;
-        atualizarVisual(valor);
-      })
-      .catch(() => aplicarUltimoEstado());
-  }
-
-  function atualizarVisual(valor) {
-    const statusDiv = document.getElementById('estadoRele');
-    const btnLigar = document.getElementById('btnLigar');
-    const btnDesligar = document.getElementById('btnDesligar');
-
-    btnLigar.classList.remove('ativo');
-    btnDesligar.classList.remove('ativo');
-
-    if (valor === "0") {
-      statusDiv.innerHTML = '✅ <span class="ligado">Ligado</span>';
-      btnLigar.classList.add('ativo');
-    } else {
-      statusDiv.innerHTML = '❌ <span class="desligado">Desligado</span>';
-      btnDesligar.classList.add('ativo');
-    }
-  }
-
-  function aplicarUltimoEstado() {
-    if (ultimoEstado !== null) {
-      atualizarVisual(ultimoEstado);
-    }
-  }
-
-  function registrarHorario(valor) {
-    const horario = new Date().toLocaleTimeString('pt-BR');
-    const estadoTexto = valor === "0" ? "Ligado" : "Desligado";
-    document.getElementById('atualizacao').innerText = `🕒 ${estadoTexto} às ${horario}`;
-  }
-
-  function enviarEmail(valor) {
-    const estado = valor === "0" ? "Ligado" : "Desligado";
-    const horario = new Date().toLocaleTimeString('pt-BR');
-
-    emailjs.send("service_d9huhp6", "template_zwdnbdp", {
-      estado_rele: estado,
-      horario: horario,
-      reply_to: emailUsuario
-    })
-    .then(() => console.log("Email enviado com sucesso"))
-    .catch((error) => console.error("Erro ao enviar email:", error));
-  }
-
-  function iniciarReconhecimento() {
-    if (reconhecimento) {
-      reconhecimento.stop();
-      reconhecimento = null;
-    }
-
-    reconhecimento = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    reconhecimento.lang = 'pt-BR';
-    reconhecimento.continuous = true;
-    reconhecimento.interimResults = false;
-
-    reconhecimento.onresult = (event) => {
-      const comando = event.results[event.results.length - 1][0].transcript.toLowerCase();
-
-      const palavraLigar = document.getElementById("comandoLigar").value.toLowerCase();
-      const palavraDesligar = document.getElementById("comandoDesligar").value.toLowerCase();
-
-      if (comando.includes(palavraLigar) && ultimoEstado !== "0") {
-        enviarComando(0);
-      } else if (comando.includes(palavraDesligar) && ultimoEstado !== "1") {
-        enviarComando(1);
+    function iniciarComandos() {
+      if (!('webkitSpeechRecognition' in window)) {
+        alert("Reconhecimento de voz não é compatível com este navegador.");
+        return;
       }
-    };
 
-    reconhecimento.onerror = (event) => {
-      console.warn("Erro no reconhecimento:", event.error);
-    };
+      reconhecimento = new webkitSpeechRecognition();
+      reconhecimento.lang = "pt-BR";
+      reconhecimento.continuous = true;
+      reconhecimento.interimResults = false;
 
-    reconhecimento.onend = () => {
-      setTimeout(() => reconhecimento.start(), 1000);
-    };
+      reconhecimento.onresult = (event) => {
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            const comando = event.results[i][0].transcript.trim().toLowerCase();
+            console.log("Comando reconhecido:", comando);
+            processarComando(comando);
+          }
+        }
+      };
 
-    reconhecimento.start();
-  }
-</script>
+      reconhecimento.onerror = (event) => {
+        console.warn("Erro no reconhecimento:", event.error);
+        if (event.error === "not-allowed" || event.error === "permission-denied") {
+          alert("Permissão de microfone negada. Vá nas configurações do navegador e ative.");
+        }
+      };
+
+      reconhecimento.start();
+      console.log("Reconhecimento de voz iniciado.");
+    }
+
+    function processarComando(comando) {
+      // Aqui você pode integrar com o ESP ou lógica que desejar
+      if (comando.includes("ligar") || comando.includes("abrir")) {
+        alert("Comando: Ligar / Abrir reconhecido!");
+        // Envie comando para ESP, exemplo via fetch ou WebSocket
+      } else if (comando.includes("desligar") || comando.includes("fechar")) {
+        alert("Comando: Desligar / Fechar reconhecido!");
+      } else {
+        alert("Comando não reconhecido: " + comando);
+      }
+    }
+  </script>
 </body>
 </html>
