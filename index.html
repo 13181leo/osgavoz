@@ -3,249 +3,232 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Osga Voz</title>
+  <title>Controle GPS com Carrinho</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <style>
     body {
       margin: 0;
       padding: 0;
-      background: url('https://img.freepik.com/fotos-gratis/fundo-futurista-com-luzes-de-neon-abstratas-brilhantes-coloridas_181624-26329.jpg') no-repeat center center fixed;
-      background-size: cover;
-      color: white;
       font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      min-height: 100vh;
-    }
-    #tabs {
-      position: fixed;
-      top: 0;
-      width: 100%;
-      display: flex;
-      justify-content: center;
-      background: rgba(0, 0, 0, 0.6);
-      z-index: 10;
-    }
-    #tabs button {
-      flex: 1;
-      padding: 15px;
-      font-weight: bold;
+      background: #000;
       color: white;
-      background: none;
-      border: none;
-      cursor: pointer;
-    }
-    .container {
-      display: none;
+      display: flex;
       flex-direction: column;
       align-items: center;
-      width: 100%;
-      max-width: 400px;
+    }
+    #loginArea, .container {
+      margin-top: 60px;
       padding: 20px;
-      margin-top: 80px;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 20px;
+      border-radius: 15px;
+      background: rgba(255,255,255,0.05);
       backdrop-filter: blur(5px);
-    }
-    .botao {
-      width: 140px;
-      height: 140px;
-      margin: 12px;
-      font-size: 20px;
-      font-weight: bold;
-      border-radius: 50%;
-      border: none;
-      color: white;
-      cursor: pointer;
-    }
-    .on { background-color: #1e7e34; }
-    .off { background-color: #a71d2a; }
-    .ativo.on {
-      background: #4caf50;
-      box-shadow: 0 0 25px #4caf50;
-    }
-    .ativo.off {
-      background: #f44336;
-      box-shadow: 0 0 25px #f44336;
-    }
-    #loginArea {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
       width: 90%;
-      max-width: 400px;
-      margin-top: 80px;
-      padding: 20px;
-      border-radius: 20px;
-      background: rgba(255, 255, 255, 0.05);
-      backdrop-filter: blur(5px);
+      max-width: 600px;
     }
-    #loginArea input, #loginArea button {
+    #mapa {
       width: 100%;
-      font-size: 16px;
-      margin: 8px 0;
-      padding: 12px;
+      height: 400px;
+      border: 2px solid #00f0ff;
+      border-radius: 10px;
+      margin: 20px 0;
+    }
+    .dados-localizacao {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 20px;
+    }
+    .box {
+      flex: 1 1 45%;
+    }
+    label {
+      font-weight: bold;
+      display: block;
+      margin-bottom: 5px;
+    }
+    input {
+      width: 100%;
+      padding: 10px;
       border-radius: 10px;
       border: none;
-    }
-    #loginArea button {
-      background-color: #2196F3;
+      background: rgba(255,255,255,0.1);
       color: white;
+      font-size: 16px;
+    }
+    .buttons {
+      margin-top: 10px;
+    }
+    button {
+      background-color: #00f0ff;
+      color: black;
+      border: none;
+      padding: 10px 20px;
+      font-size: 16px;
+      border-radius: 10px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #008C99;
+    }
+    #listaRuas {
+      background: rgba(255,255,255,0.1);
+      border-radius: 10px;
+      padding: 10px;
+      margin-top: 10px;
+      max-height: 150px;
+      overflow-y: auto;
+      font-size: 14px;
     }
   </style>
 </head>
 <body>
+  <div id="loginArea">
+    <h1>Login</h1>
+    <input type="text" id="usuario" placeholder="Usuário" />
+    <input type="password" id="senha" placeholder="Senha" />
+    <button onclick="fazerLogin()">Entrar</button>
+  </div>
 
-<div id="tabs">
-  <button onclick="abrirPainel()">Painel</button>
-  <button onclick="abrirConfig()">Configurações</button>
-</div>
+  <div id="painel" class="container" style="display:none">
+    <h1>Osga GPS</h1>
+    <div id="mapa"></div>
+    <div class="dados-localizacao">
+      <div class="box">
+        <label>Latitude (V1):</label>
+        <input type="text" id="lat" readonly>
+      </div>
+      <div class="box">
+        <label>Longitude (V2):</label>
+        <input type="text" id="lon" readonly>
+      </div>
+      <div class="box">
+        <label>Velocidade:</label>
+        <input type="text" id="velocidade" readonly>
+      </div>
+    </div>
+    <div id="listaRuas"></div>
+    <div class="buttons">
+      <button onclick="buscarRegistros()">Registros</button>
+      <button onclick="limparPercurso()">Limpar Percurso</button>
+      <input type="text" id="ipESP" placeholder="IP do ESP (ex: 192.168.1.123)">
+      <button onclick="buscarDoESP()">Buscar do ESP</button>
+    </div>
+  </div>
 
-<div id="loginArea">
-  <h1>Login</h1>
-  <input type="text" id="usuario" placeholder="Usuário">
-  <input type="password" id="senha" placeholder="Senha">
-  <button onclick="fazerLogin()">Entrar</button>
-</div>
+  <script>
+    const ipServidor = '45.181.56.47';
+    const porta = '8080';
+    let token = '';
+    let mapa, marcadorCelular = null, linhaCelular = null;
+    let trilhaCelular = [], ultimaPosicao = null;
 
-<div id="painel" class="container">
-  <h2>Controle do Relé</h2>
-  <button id="btnLigar" class="botao on" onclick="enviarComando(0)">LIGAR</button>
-  <button id="btnDesligar" class="botao off" onclick="enviarComando(1)">DESLIGAR</button>
-  <div id="estadoRele">⏳ Verificando...</div>
-</div>
-
-<div id="configPage" class="container">
-  <h2>Comandos de Voz</h2>
-  <label for="comandoLigar">Comando para Ligar:</label>
-  <input type="text" id="comandoLigar" value="ligar">
-  <label for="comandoDesligar">Comando para Desligar:</label>
-  <input type="text" id="comandoDesligar" value="desligar">
-  <button onclick="iniciarReconhecimento()">Aplicar Comandos</button>
-  <p>🎤 Diga "ligar" ou "desligar" para controlar.</p>
-</div>
-
-<script>
-  const ipServidor = '45.181.56.47';
-  const porta = '8080';
-  let token = '';
-  let ultimoEstado = null;
-  let reconhecimento = null;
-
-  const usuarios = {
-    "cliente21@osga.com": {
-      senha: "13181leo",
-      token: "lFB0OVz9myOpC5kTOw4nDcnxdjdx-TCY"
-    }
-  };
-
-  function fazerLogin() {
-    const user = document.getElementById('usuario').value;
-    const senha = document.getElementById('senha').value;
-    if (usuarios[user] && usuarios[user].senha === senha) {
-      token = usuarios[user].token;
-      document.getElementById('loginArea').style.display = 'none';
-      abrirPainel();
-      atualizarEstado();
-      setInterval(atualizarEstado, 3000);
-    } else {
-      alert("Usuário ou senha inválido.");
-    }
-  }
-
-  function abrirPainel() {
-    document.getElementById('painel').style.display = 'flex';
-    document.getElementById('configPage').style.display = 'none';
-  }
-
-  function abrirConfig() {
-    document.getElementById('painel').style.display = 'none';
-    document.getElementById('configPage').style.display = 'flex';
-  }
-
-  function enviarComando(valor) {
-    fetch(`http://${ipServidor}:${porta}/${token}/update/V5?value=${valor}`)
-      .then(response => {
-        if (response.ok) {
-          atualizarVisual(String(valor));
-          ultimoEstado = String(valor);
-        } else {
-          document.getElementById('estadoRele').innerText = '❌ Erro ao enviar comando';
-        }
-      })
-      .catch(() => {
-        document.getElementById('estadoRele').innerText = '❌ Erro de conexão';
-      });
-  }
-
-  function atualizarEstado() {
-    fetch(`http://${ipServidor}:${porta}/${token}/get/V5`)
-      .then(res => res.json())
-      .then(data => {
-        let valor = Array.isArray(data) ? String(data[0]) : String(data.value);
-        valor = valor.trim();
-        if (valor === "0" || valor === "1") {
-          if (valor !== ultimoEstado) {
-            ultimoEstado = valor;
-            atualizarVisual(valor);
-          }
-        }
-      });
-  }
-
-  function atualizarVisual(valor) {
-    const status = document.getElementById('estadoRele');
-    const btnLigar = document.getElementById('btnLigar');
-    const btnDesligar = document.getElementById('btnDesligar');
-    btnLigar.classList.remove('ativo');
-    btnDesligar.classList.remove('ativo');
-    if (valor === "0") {
-      status.innerHTML = '✅ <span style="color: #4caf50;">Ligado</span>';
-      btnLigar.classList.add('ativo');
-    } else {
-      status.innerHTML = '❌ <span style="color: #f44336;">Desligado</span>';
-      btnDesligar.classList.add('ativo');
-    }
-  }
-
-  function iniciarReconhecimento() {
-    if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-      alert("Reconhecimento de voz não é suportado.");
-      return;
-    }
-
-    if (reconhecimento) {
-      reconhecimento.stop();
-      reconhecimento = null;
-    }
-
-    reconhecimento = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
-    reconhecimento.lang = 'pt-BR';
-    reconhecimento.continuous = true;
-    reconhecimento.interimResults = false;
-
-    reconhecimento.onresult = (event) => {
-      const comando = event.results[event.results.length - 1][0].transcript.toLowerCase();
-      const palavraLigar = document.getElementById("comandoLigar").value.toLowerCase();
-      const palavraDesligar = document.getElementById("comandoDesligar").value.toLowerCase();
-
-      if (comando.includes(palavraLigar) && ultimoEstado !== "0") {
-        enviarComando(0);
-      } else if (comando.includes(palavraDesligar) && ultimoEstado !== "1") {
-        enviarComando(1);
+    const usuarios = {
+      "cliente21@osga.com": {
+        senha: "13181leo",
+        token: "lFB0OVz9myOpC5kTOw4nDcnxdjdx-TCY"
       }
     };
 
-    reconhecimento.onerror = (event) => {
-      console.warn("Erro no reconhecimento:", event.error);
-    };
+    function fazerLogin() {
+      const user = document.getElementById('usuario').value;
+      const senha = document.getElementById('senha').value;
+      if (usuarios[user] && usuarios[user].senha === senha) {
+        token = usuarios[user].token;
+        document.getElementById('loginArea').style.display = 'none';
+        document.getElementById('painel').style.display = 'block';
+        iniciarMapa();
+        iniciarRastreamentoCelular();
+      } else {
+        alert("Usuário ou senha inválidos.");
+      }
+    }
 
-    reconhecimento.onend = () => {
-      setTimeout(() => reconhecimento.start(), 1000);
-    };
+    function iniciarMapa() {
+      mapa = L.map('mapa').setView([-23.55052, -46.633308], 15);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: 'Map data © OpenStreetMap contributors'
+      }).addTo(mapa);
+    }
 
-    reconhecimento.start();
-  }
-</script>
+    function iniciarRastreamentoCelular() {
+      if (!navigator.geolocation) return alert("Geolocalização não suportada.");
+
+      navigator.geolocation.watchPosition(async pos => {
+        const lat = pos.coords.latitude;
+        const lon = pos.coords.longitude;
+        const posicao = [lat, lon];
+
+        trilhaCelular.push(posicao);
+        if (linhaCelular) linhaCelular.setLatLngs(trilhaCelular);
+        else linhaCelular = L.polyline(trilhaCelular, { color: 'blue', weight: 4 }).addTo(mapa);
+
+        if (marcadorCelular) marcadorCelular.setLatLng(posicao);
+        else marcadorCelular = L.marker(posicao).addTo(mapa);
+
+        mapa.setView(posicao);
+
+        let velocidade = pos.coords.speed !== null ? pos.coords.speed * 3.6 : 0;
+        if (velocidade === 0 && ultimaPosicao) {
+          const dist = getDistancia(ultimaPosicao, posicao);
+          velocidade = (dist / 5) * 3.6;
+        }
+        ultimaPosicao = posicao;
+        document.getElementById("velocidade").value = velocidade.toFixed(1) + ' km/h';
+
+        // Obter nome da rua
+        let rua = "Desconhecida";
+        try {
+          const res = await fetch(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`);
+          const data = await res.json();
+          if (data && data.address && data.address.road) rua = data.address.road;
+        } catch (e) {
+          console.warn("Erro ao obter rua", e);
+        }
+
+        const v3 = `${lat.toFixed(6)},${lon.toFixed(6)},${rua},${velocidade.toFixed(1)}`;
+        fetch(`http://${ipServidor}:${porta}/${token}/update/V3?value=${encodeURIComponent(v3)}`)
+          .then(() => console.log("Enviado para V3:", v3))
+          .catch(() => console.warn("Erro ao enviar para V3"));
+
+      }, err => console.warn("Erro localização:", err), {
+        enableHighAccuracy: true, timeout: 10000, maximumAge: 0
+      });
+    }
+
+    function getDistancia(p1, p2) {
+      const R = 6371e3;
+      const dLat = (p2[0] - p1[0]) * Math.PI / 180;
+      const dLon = (p2[1] - p1[1]) * Math.PI / 180;
+      const a = Math.sin(dLat/2) ** 2 + Math.cos(p1[0]*Math.PI/180) * Math.cos(p2[0]*Math.PI/180) * Math.sin(dLon/2) ** 2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+
+    function buscarRegistros() {
+      fetch(`http://${ipServidor}:${porta}/${token}/get/V4?token=${token}`)
+        .then(res => res.json())
+        .then(data => {
+          const registros = JSON.parse(Array.isArray(data) ? data[0] : data.value);
+          alert("Trilha: " + JSON.stringify(registros.trilha) + "\nRuas: " + JSON.stringify(registros.velocidades));
+        });
+    }
+
+    function limparPercurso() {
+      trilhaCelular = [];
+      if (linhaCelular) linhaCelular.remove();
+      linhaCelular = null;
+      alert("Percurso limpo!");
+    }
+
+    function buscarDoESP() {
+      const ip = document.getElementById('ipESP').value;
+      if (!ip) return alert("Informe o IP do ESP");
+      fetch(`http://${ip}/dados`)
+        .then(res => res.json())
+        .then(data => alert("Trilha: " + JSON.stringify(data.trilha) + "\nRuas: " + JSON.stringify(data.velocidades)))
+        .catch(() => alert("Falha ao conectar ao ESP."));
+    }
+  </script>
 </body>
 </html>
