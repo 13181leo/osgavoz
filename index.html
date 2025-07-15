@@ -2,72 +2,78 @@
 <html lang="pt-BR">
 <head>
   <meta charset="UTF-8">
-  <title>Rastreamento GPS</title>
+  <title>Visualizador GPS - Osga</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
   <style>
-    body, html {
+    body {
       margin: 0;
-      padding: 0;
-      height: 100%;
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #000;
+      color: white;
       display: flex;
       flex-direction: column;
+      height: 100vh;
     }
+
     #map {
       flex: 1;
       width: 100%;
     }
-    #sidebar {
-      width: 100%;
-      background: #f7f7f7;
-      padding: 10px;
-      box-sizing: border-box;
-    }
-    .info {
-      margin-bottom: 10px;
-      font-size: 16px;
-    }
-    .rua-item {
-      font-size: 14px;
-      margin-bottom: 5px;
-      border-bottom: 1px solid #ccc;
-      padding-bottom: 5px;
-    }
-    .rua-item strong {
-      color: #007bff;
-    }
-    #buttons {
-      margin-bottom: 10px;
+
+    #painelInfo {
+      background: rgba(255,255,255,0.05);
+      backdrop-filter: blur(5px);
+      padding: 15px;
+      border-top: 2px solid #00f0ff;
       display: flex;
+      flex-direction: column;
       gap: 10px;
     }
-    #buttons button {
-      flex: 1;
-      padding: 10px;
-      background-color: #007bff;
-      color: white;
-      border: none;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-    #buttons button:last-child {
-      background-color: #dc3545;
+
+    .info-line {
+      display: flex;
+      justify-content: space-between;
+      gap: 15px;
     }
 
-    @media (min-width: 768px) {
-      body {
-        flex-direction: row;
-      }
-      #map {
-        width: 75%;
-      }
-      #sidebar {
-        width: 25%;
-        height: 100vh;
-        overflow-y: auto;
-        border-left: 1px solid #ccc;
+    .info-box {
+      flex: 1;
+      background-color: rgba(0, 240, 255, 0.1);
+      padding: 10px;
+      border-radius: 10px;
+      font-size: 14px;
+    }
+
+    #lista-ruas {
+      max-height: 120px;
+      overflow-y: auto;
+      font-size: 13px;
+      border: 1px solid #00f0ff;
+      border-radius: 8px;
+      padding: 8px;
+      background: rgba(255,255,255,0.08);
+    }
+
+    button {
+      background-color: #00f0ff;
+      color: black;
+      border: none;
+      padding: 10px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-weight: bold;
+    }
+
+    button:hover {
+      background-color: #009eaa;
+    }
+
+    @media(max-width: 600px) {
+      .info-line {
+        flex-direction: column;
       }
     }
   </style>
@@ -76,167 +82,143 @@
 
 <div id="map"></div>
 
-<div id="sidebar">
-  <div id="buttons">
-    <button onclick="salvarPDF()">Salvar PDF</button>
-    <button onclick="limparPercurso()">Limpar</button>
+<div id="painelInfo">
+  <div class="info-line">
+    <div class="info-box">Rua: <span id="rua">---</span></div>
+    <div class="info-box">Velocidade: <span id="velocidade">--- km/h</span></div>
+    <div class="info-box">Estado: <span id="estado">---</span></div>
   </div>
-  <div class="info" id="status">Status: Conectando...</div>
-  <div class="info" id="rua">Rua: ---</div>
-  <div class="info" id="velocidade">Velocidade: --- km/h</div>
-  <hr>
-  <h3>Velocidade maxima por rua</h3>
-  <div id="lista-ruas"></div>
-</div>
- <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
-  <script>
-    const usuarioValido = "cliente21@osga.com";
-    const senhaValida = "13181leo";
 
-    function verificarLogin() {
-      const u = document.getElementById('usuario').value;
-      const s = document.getElementById('senha').value;
-      if (u === usuarioValido && s === senhaValida) {
-        document.getElementById('login').style.display = 'none';
-        document.getElementById('principal').style.display = 'block';
-        iniciarMapa();
-      } else {
-        alert("Login inválido");
-      }
-    }
-<script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  <div id="lista-ruas"></div>
+
+  <div class="info-line">
+    <button onclick="salvarPDF()">Salvar PDF</button>
+    <button onclick="limparPercurso()">Limpar Percurso</button>
+  </div>
+</div>
+
 <script>
   const SERVER_IP = "45.181.56.47";
   const SERVER_PORT = "8080";
   const AUTH_TOKEN = "lFB0OVz9myOpC5kTOw4nDcnxdjdx-TCY";
   const PIN = "V3";
   const MAX_POINTS = 500;
+  const janelaMedia = 5;
 
-  let map = L.map('map').setView([-23.5505, -46.6333], 17);
+  let route = [];
+  let historicoVelocidades = [];
+  let maxSpeeds = {};
+
+  let map = L.map('map').setView([-23.5505, -46.6333], 14);
   L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
     attribution: '&copy; OpenStreetMap contributors'
   }).addTo(map);
 
-  const carIcon = L.icon({
-    iconUrl: 'https://file.aiquickdraw.com/imgcompressed/img/compressed_497c17998afe45f7556a7598f2cb24c8.webp',
-    iconSize: [40, 40],
-    iconAnchor: [18, 18]
-  });
-
-  let marker = L.marker([-23.5505, -46.6333], { icon: carIcon }).addTo(map);
   let polyline = L.polyline([], { color: 'blue', weight: 4 }).addTo(map);
-  let route = [];
+  let marker = null;
 
-  let lastLat = null;
-  let lastLng = null;
+  const ruaSpan = document.getElementById('rua');
+  const velocidadeSpan = document.getElementById('velocidade');
+  const estadoSpan = document.getElementById('estado');
+  const listaRuasDiv = document.getElementById('lista-ruas');
 
-  const statusElement = document.getElementById('status');
-  const ruaElement = document.getElementById('rua');
-  const velocidadeElement = document.getElementById('velocidade');
-  const listaRuas = document.getElementById('lista-ruas');
+  function calcularVelocidadeMedia(novaVelocidade) {
+    historicoVelocidades.push(novaVelocidade);
+    if (historicoVelocidades.length > janelaMedia) historicoVelocidades.shift();
+    const soma = historicoVelocidades.reduce((a, b) => a + b, 0);
+    return soma / historicoVelocidades.length;
+  }
 
-  let maxSpeeds = {};
-
-  let follow = true;
-  let lastInteractionTime = Date.now();
-
-  map.on('movestart', () => {
-    follow = false;
-    lastInteractionTime = Date.now();
-  });
-
-  function atualizarLista() {
-    listaRuas.innerHTML = '';
-    for (const rua in maxSpeeds) {
-      const div = document.createElement('div');
-      div.className = 'rua-item';
-      div.innerHTML = `<strong>${rua}</strong><br>Velocidade maxima: ${maxSpeeds[rua].toFixed(1)} km/h`;
-      listaRuas.appendChild(div);
-    }
+  function detectarTipoMovimento(velMedia) {
+    if (velMedia < 1) return "Parado";
+    if (velMedia < 7) return "Caminhando";
+    return "Veículo em movimento";
   }
 
   async function fetchData() {
     try {
-      statusElement.textContent = "Status: Carregando...";
-      const response = await fetch(`http://${SERVER_IP}:${SERVER_PORT}/${AUTH_TOKEN}/get/${PIN}`);
-      const data = await response.json();
+      const res = await fetch(`http://${SERVER_IP}:${SERVER_PORT}/${AUTH_TOKEN}/get/${PIN}`);
+      const data = await res.json();
+      const v = data[0]?.split(',');
 
-      if (data && data[0]) {
-        let parts = data[0].split(',');
-        if (parts.length >= 4) {
-          let lat = parseFloat(parts[0]);
-          let lng = parseFloat(parts[1]);
-          let rua = parts[2].trim();
-          let velocidade = parseFloat(parts[3]);
+      if (!v || v.length < 4) return;
 
-          if (lat === lastLat && lng === lastLng) {
-            statusElement.textContent = "Status: Conectado";
-            return;
-          }
-          lastLat = lat;
-          lastLng = lng;
+      const lat = parseFloat(v[0]);
+      const lon = parseFloat(v[1]);
+      const rua = v[2] || "Desconhecida";
+      const velocidade = parseFloat(v[3]);
 
-          const newPoint = [lat, lng];
-          route.push(newPoint);
-          if (route.length > MAX_POINTS) route.shift();
-          polyline.setLatLngs(route);
-          marker.setLatLng(newPoint);
+      const pos = [lat, lon];
+      route.push(pos);
+      if (route.length > MAX_POINTS) route.shift();
+      polyline.setLatLngs(route);
 
-          if (follow) {
-            map.setView(newPoint, 17);
-          } else if (Date.now() - lastInteractionTime > 20000) {
-            follow = true;
-            map.setView(newPoint, 17);
-          }
+      if (!marker)
+        marker = L.marker(pos).addTo(map);
+      else
+        marker.setLatLng(pos);
 
-          ruaElement.textContent = `Rua: ${rua || "---"}`;
-          velocidadeElement.textContent = `Velocidade: ${velocidade.toFixed(1)} km/h`;
+      map.setView(pos);
 
-          if (rua !== "") {
-            if (!maxSpeeds[rua] || velocidade > maxSpeeds[rua]) {
-              maxSpeeds[rua] = velocidade;
-              atualizarLista();
-            }
-          }
-          statusElement.textContent = "Status: Conectado";
-        }
+      const velMedia = calcularVelocidadeMedia(velocidade);
+      const estado = detectarTipoMovimento(velMedia);
+
+      ruaSpan.textContent = rua;
+      velocidadeSpan.textContent = velMedia.toFixed(1) + ' km/h';
+      estadoSpan.textContent = estado;
+
+      if (!maxSpeeds[rua] || velocidade > maxSpeeds[rua]) {
+        maxSpeeds[rua] = velocidade;
+        atualizarLista();
       }
-    } catch (error) {
-      console.error("Erro ao buscar dados:", error);
-      statusElement.textContent = "Status: Desconectado";
+
+    } catch (e) {
+      console.error("Erro ao buscar dados:", e);
     }
   }
 
-  setInterval(fetchData, 1000);
+  function atualizarLista() {
+    listaRuasDiv.innerHTML = '';
+    for (const rua in maxSpeeds) {
+      const div = document.createElement('div');
+      div.innerHTML = `<strong>${rua}</strong>: ${maxSpeeds[rua].toFixed(1)} km/h`;
+      listaRuasDiv.appendChild(div);
+    }
+  }
 
   function salvarPDF() {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
     doc.setFontSize(16);
-    doc.text("Relatorio de velocidade por rua", 10, 20);
+    doc.text("Relatório de Velocidade por Rua", 10, 20);
     let y = 30;
     for (const rua in maxSpeeds) {
-      doc.setFontSize(12);
       doc.text(`${rua}: ${maxSpeeds[rua].toFixed(1)} km/h`, 10, y);
       y += 10;
-      if (y > 280) {
+      if (y > 270) {
         doc.addPage();
         y = 20;
       }
     }
-    doc.save('relatorio_percurso.pdf');
+    doc.save("relatorio_velocidades.pdf");
   }
 
   function limparPercurso() {
-    if (confirm("Tem certeza que deseja limpar o percurso?")) {
+    if (confirm("Deseja realmente limpar o percurso?")) {
       route = [];
-      polyline.setLatLngs(route);
+      historicoVelocidades = [];
       maxSpeeds = {};
+      polyline.setLatLngs(route);
+      if (marker) marker.remove();
+      marker = null;
       atualizarLista();
-      ruaElement.textContent = "Rua: ---";
-      velocidadeElement.textContent = "Velocidade: --- km/h";
+      ruaSpan.textContent = "---";
+      velocidadeSpan.textContent = "--- km/h";
+      estadoSpan.textContent = "---";
     }
   }
+
+  setInterval(fetchData, 3000);
 </script>
 
 </body>
