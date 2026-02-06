@@ -1,124 +1,256 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <title>Controle de Acesso</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
-
-  <style>
-    body {
-      background: #111;
-      color: #fff;
-      font-family: Arial;
-      text-align: center;
-    }
-    video {
-      width: 90%;
-      max-width: 400px;
-      border-radius: 10px;
-      border: 2px solid #00c853;
-    }
-    #status {
-      font-size: 22px;
-      margin-top: 10px;
-      font-weight: bold;
-    }
-    #info {
-      font-size: 16px;
-      opacity: 0.8;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>F&E Souza Garage - Sistema de Gestão</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.28/jspdf.plugin.autotable.min.js"></script>
+    
+    <style>
+        body { background-color: #f8f9fa; padding: 20px; font-family: 'Segoe UI', sans-serif; }
+        .card { border-radius: 15px; border: none; box-shadow: 0 5px 15px rgba(0,0,0,0.1); margin-bottom: 25px; }
+        .header-oficina { 
+            background: linear-gradient(135deg, #1a1a1a 0%, #3d3d3d 100%); 
+            color: white; padding: 30px; border-radius: 15px; margin-bottom: 30px;
+            border-bottom: 5px solid #ff6600; /* Cor inspirada no motor do seu logo */
+        }
+        .logo-preview { max-height: 80px; margin-bottom: 15px; border-radius: 8px; }
+        .peca-item { background: #fff; padding: 12px; border-left: 5px solid #ff6600; margin-bottom: 10px; border: 1px solid #dee2e6; border-radius: 5px; }
+        .table-dark { background-color: #212529 !important; }
+    </style>
 </head>
-
 <body>
 
-<h2>✋ Controle de Acesso</h2>
-<p>Mão aberta = LIGA | Mão fechada = DESLIGA</p>
+<div class="container">
+    <div class="header-oficina text-center">
+        <img src="https://lh3.googleusercontent.com/p/AF1QipPvbA5JOf8mJUxUKdWdr0S76wawQCNEkJoACYLT=w175-h292-n-k-no-nu" id="logoApp" class="logo-preview" alt="F&E Souza Garage" onerror="this.style.display='none'">
+        <h1 class="fw-bold">F&E SOUZA GARAGE</h1>
+        <p class="mb-0">Gestão de Ordens de Serviço e Relatórios</p>
+    </div>
 
-<video id="video" autoplay playsinline></video>
+    <div class="card p-4">
+        <form id="osForm">
+            <div class="row g-3">
+                <div class="col-md-2">
+                    <label class="form-label fw-bold">Nº O.S.</label>
+                    <input type="number" id="numeroOS" class="form-control border-dark fw-bold" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Nome do Cliente</label>
+                    <input type="text" id="cliente" class="form-control" required>
+                </div>
+                <div class="col-md-5">
+                    <label class="form-label">Telefone (WhatsApp)</label>
+                    <input type="tel" id="telefone" class="form-control" placeholder="(00) 00000-0000">
+                </div>
+                
+                <div class="col-md-3">
+                    <label class="form-label">Marca</label>
+                    <input type="text" id="marca" class="form-control" required placeholder="Ex: Honda">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label">Modelo</label>
+                    <input type="text" id="modelo" class="form-control" required placeholder="Ex: Civic">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-primary fw-bold">Data Entrada</label>
+                    <input type="date" id="dataEntrada" class="form-control" required>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label text-success fw-bold">Data Saída</label>
+                    <input type="date" id="dataSaida" class="form-control">
+                </div>
 
-<div id="status">🔍 Aguardando...</div>
-<div id="info"></div>
+                <div class="col-12">
+                    <label class="form-label">Descrição Principal do Serviço</label>
+                    <input type="text" id="servico" class="form-control" placeholder="O que será feito no veículo?">
+                </div>
+            </div>
+
+            <hr class="my-4">
+            <h5 class="mb-3"><i class="bi bi-gear-fill"></i> Peças Substituídas</h5>
+            <div id="listaPecas">
+                <div class="row g-2 peca-item align-items-end">
+                    <div class="col-md-8">
+                        <label class="form-label">Nome da Peça / Componente</label>
+                        <input type="text" class="form-control nome-peca">
+                    </div>
+                    <div class="col-md-2">
+                        <label class="form-label">Valor (R$)</label>
+                        <input type="number" step="0.01" class="form-control valor-peca">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="button" class="btn btn-primary w-100" onclick="addPeca()">+ Peça</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mt-4 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label fw-bold text-danger">Mão de Obra (R$)</label>
+                    <input type="number" id="valorMO" class="form-control form-control-lg border-danger" step="0.01" required>
+                </div>
+                <div class="col-md-8">
+                    <button type="submit" class="btn btn-success btn-lg w-100 shadow-sm">Registrar Ordem de Serviço</button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <div class="card p-4">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+            <h3 class="m-0">Relatório de Movimentação</h3>
+            <div>
+                <button class="btn btn-dark fw-bold shadow-sm" onclick="gerarPDF()">⬇ BAIXAR RELATÓRIO PDF</button>
+                <button class="btn btn-outline-danger ms-2 btn-sm" onclick="limpar()">Limpar Banco</button>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle" id="tabelaDados">
+                <thead class="table-dark">
+                    <tr>
+                        <th>OS</th>
+                        <th>Cliente</th>
+                        <th>Veículo</th>
+                        <th>M.O. (R$)</th>
+                        <th>Total (R$)</th>
+                    </tr>
+                </thead>
+                <tbody id="corpo"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
 
 <script>
-const video = document.getElementById('video');
-const statusEl = document.getElementById('status');
-const infoEl = document.getElementById('info');
+    // Função para adicionar campos de peças dinamicamente
+    function addPeca() {
+        const div = document.createElement('div');
+        div.className = 'row g-2 peca-item align-items-end mt-2';
+        div.innerHTML = `
+            <div class="col-md-8"><input type="text" class="form-control nome-peca"></div>
+            <div class="col-md-2"><input type="number" step="0.01" class="form-control valor-peca"></div>
+            <div class="col-md-2"><button type="button" class="btn btn-danger w-100" onclick="this.parentElement.parentElement.remove()">Remover</button></div>
+        `;
+        document.getElementById('listaPecas').appendChild(div);
+    }
 
-/* 🔐 DADOS DO SEU BLYNK */
-const SERVER_IP   = "45.181.56.47";
-const SERVER_PORT = "8080";
-const AUTH_TOKEN  = "lFB0OVz9myOpC5kTOw4nDcnxdjdx-TCY";
+    // Lógica para salvar os dados
+    document.getElementById('osForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        let pecas = [];
+        let somaPecas = 0;
+        document.querySelectorAll('.nome-peca').forEach((el, i) => {
+            const v = parseFloat(document.querySelectorAll('.valor-peca')[i].value) || 0;
+            if(el.value) {
+                pecas.push(`${el.value} (R$ ${v.toFixed(2)})`);
+                somaPecas += v;
+            }
+        });
 
-const BLYNK_URL = `http://${SERVER_IP}:${SERVER_PORT}/${AUTH_TOKEN}/update/V5`;
+        const valorMO = parseFloat(document.getElementById('valorMO').value) || 0;
+        
+        const obj = {
+            os: document.getElementById('numeroOS').value,
+            cliente: document.getElementById('cliente').value,
+            tel: document.getElementById('telefone').value,
+            veiculo: `${document.getElementById('marca').value} ${document.getElementById('modelo').value}`,
+            entrada: formatData(document.getElementById('dataEntrada').value),
+            saida: document.getElementById('dataSaida').value ? formatData(document.getElementById('dataSaida').value) : 'PENDENTE',
+            servico: document.getElementById('servico').value,
+            pecas: pecas.join(' | '),
+            mo: valorMO.toFixed(2),
+            total: (somaPecas + valorMO).toFixed(2)
+        };
 
-let estadoAtual = ""; // ligado | desligado
+        let db = JSON.parse(localStorage.getItem('oficina_v3')) || [];
+        db.push(obj);
+        localStorage.setItem('oficina_v3', JSON.stringify(db));
+        
+        this.reset();
+        resetCamposPecas();
+        atualizarTabela();
+        alert("Serviço registrado com sucesso!");
+    });
 
-function enviarBlynk(valor) {
-  fetch(`${BLYNK_URL}?value=${valor}`)
-    .then(() => console.log("Blynk V5 =", valor))
-    .catch(err => console.error("Erro Blynk:", err));
-}
+    function resetCamposPecas() {
+        document.getElementById('listaPecas').innerHTML = `
+            <div class="row g-2 peca-item align-items-end">
+                <div class="col-md-8"><input type="text" class="form-control nome-peca"></div>
+                <div class="col-md-2"><input type="number" step="0.01" class="form-control valor-peca"></div>
+                <div class="col-md-2"><button type="button" class="btn btn-primary w-100" onclick="addPeca()">+ Peça</button></div>
+            </div>`;
+    }
 
-const hands = new Hands({
-  locateFile: file =>
-    `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`
-});
+    function formatData(d) { return d.split('-').reverse().join('/'); }
 
-hands.setOptions({
-  maxNumHands: 1,
-  modelComplexity: 1,
-  minDetectionConfidence: 0.6,
-  minTrackingConfidence: 0.6
-});
+    function atualizarTabela() {
+        const db = JSON.parse(localStorage.getItem('oficina_v3')) || [];
+        const corpo = document.getElementById('corpo');
+        corpo.innerHTML = db.map(i => `
+            <tr>
+                <td class="fw-bold text-danger">#${i.os}</td>
+                <td><strong>${i.cliente}</strong><br><small>${i.tel}</small></td>
+                <td>${i.veiculo}</td>
+                <td>${i.mo}</td>
+                <td class="fw-bold text-success">R$ ${i.total}</td>
+            </tr>
+        `).join('');
+    }
 
-hands.onResults(results => {
-  if (!results.multiHandLandmarks || results.multiHandLandmarks.length === 0) {
-    statusEl.innerText = "🔍 Nenhuma mão detectada";
-    infoEl.innerText = "";
-    return;
-  }
+    // Função Gerar PDF com Logo e Mão de Obra
+    function gerarPDF() {
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF('l', 'mm', 'a4'); // Paisagem
+        const db = JSON.parse(localStorage.getItem('oficina_v3')) || [];
 
-  const p = results.multiHandLandmarks[0];
+        // Título e Cabeçalho
+        doc.setFillColor(30, 30, 30);
+        doc.rect(0, 0, 297, 40, 'F'); // Faixa preta no topo
+        
+        doc.setTextColor(255, 255, 255);
+        doc.setFontSize(22);
+        doc.setFont('helvetica', 'bold');
+        doc.text("F&E SOUZA GARAGE", 14, 20);
+        
+        doc.setFontSize(10);
+        doc.setFont('helvetica', 'normal');
+        doc.text("RELATÓRIO DIÁRIO DE SERVIÇOS E PEÇAS", 14, 30);
+        doc.text(`Gerado em: ${new Date().toLocaleDateString()} ${new Date().toLocaleTimeString()}`, 230, 30);
 
-  const dedos = [
-    p[8].y  < p[6].y,   // indicador
-    p[12].y < p[10].y,  // médio
-    p[16].y < p[14].y,  // anelar
-    p[20].y < p[18].y   // mindinho
-  ];
+        const rows = db.map(i => [
+            i.os,
+            `Entrada: ${i.entrada}\nSaída: ${i.saida}`,
+            `${i.cliente}\n${i.tel}`,
+            i.veiculo,
+            `${i.servico}\nPEÇAS: ${i.pecas}`,
+            `R$ ${i.mo}`,
+            `R$ ${i.total}`
+        ]);
 
-  const abertos = dedos.filter(d => d).length;
-  infoEl.innerText = `Dedos abertos: ${abertos}`;
+        doc.autoTable({
+            head: [['OS', 'Datas de Entrada/Saída', 'Cliente / Tel', 'Veículo', 'Descrição Serviço e Peças', 'Mão de Obra', 'Total Geral']],
+            body: rows,
+            startY: 45,
+            theme: 'grid',
+            styles: { fontSize: 8, cellPadding: 3 },
+            headStyles: { fillColor: [255, 102, 0], textColor: [255, 255, 255] }, // Laranja do motor
+            columnStyles: {
+                4: { cellWidth: 80 },
+                0: { fontStyle: 'bold' }
+            }
+        });
 
-  // ✋ MÃO ABERTA → LIGA
-  if (abertos >= 4 && estadoAtual !== "ligado") {
-    estadoAtual = "ligado";
-    statusEl.innerText = "✋ V5 LIGADO";
-    enviarBlynk(1);
-  }
+        doc.save(`Relatorio_Souza_Garage_${new Date().toLocaleDateString()}.pdf`);
+    }
 
-  // ✊ MÃO FECHADA → DESLIGA
-  if (abertos <= 1 && estadoAtual !== "desligado") {
-    estadoAtual = "desligado";
-    statusEl.innerText = "✊ V5 DESLIGADO";
-    enviarBlynk(0);
-  }
-});
-
-const camera = new Camera(video, {
-  onFrame: async () => {
-    await hands.send({ image: video });
-  },
-  width: 640,
-  height: 480
-});
-
-camera.start();
+    function limpar() { if(confirm("Deseja apagar permanentemente todos os registros?")) { localStorage.removeItem('oficina_v3'); atualizarTabela(); } }
+    
+    window.onload = atualizarTabela;
 </script>
 
 </body>
-</html>  
+</html>
